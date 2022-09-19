@@ -88,16 +88,45 @@ export const getRandomFurnitureController = async (req, res) => {
     res.status(result.meta.status).json(result);
 }
 
-export const getFilteredFurnitureController = async (req, res) => {
+export const getCategoriesController = async (req, res) => {
     const result = getResponseTemplate();
     try {
-        const { page = 1, rowsPerPage = 8 } = req.query;
-        const query = "SELECT id,image FROM furniture " +
-            "WHERE category_id = ? " +
-            "LIMIT ?,?; ";
+        const data = await select(`categories`, '*');
+        const arr = [];
+        for (let i = 0; i < data.length; i++) {
+            if (data[i].parent_id === null) {
+                data[i].subcategories = []
+                for (let j = 0; j < data.length; j++) {
+                    if (data[j].parent_id === data[i].id) {
+                        data[i].subcategories.push(data[j])
+                    }
+                }
+            }
+            arr.push(data[i])
+        }
 
-        const data = await exec(query, [req.params.id, (page - 1) * rowsPerPage, +rowsPerPage]);
-        result.data = { items: data };
+        result.data = { categories: arr }
+
+    } catch (err) {
+        result.meta.error = {
+            code: err.code || err.errCode || 5000,
+            message: err.message || err.errMessage || "Unknown Error"
+        };
+        result.meta.status = err.status || err.statusCode || 500;
+    }
+    res.status(result.meta.status).json(result);
+}
+
+export const getFilteredFurnituresController = async (req, res) => {
+    const result = getResponseTemplate();
+    try {
+        const { page = 1, rowsPerPage = 9 } = req.query;
+        const query =
+            "SELECT id, image FROM furniture " +
+            "WHERE category_id IN (SELECT id FROM categories WHERE parent_id = ? UNION SELECT ? id) " +
+            "LIMIT ?,?";
+        const data = await exec(query, [req.params.id, req.params.id, (page - 1) * rowsPerPage, +rowsPerPage]);
+        result.data = { item: data };
 
     } catch (err) {
         result.meta.error = {
