@@ -137,3 +137,45 @@ export const getFilteredFurnituresController = async (req, res) => {
     }
     res.status(result.meta.status).json(result);
 }
+
+export const getMenuInfoFurnitureController = async (req, res) => {
+    const result = getResponseTemplate();
+    try {
+        const query =
+            "SELECT id,title FROM categories " +
+            "WHERE parent_id IS NULL;"
+
+        const data = await exec(query);
+        result.data = { item: data };
+
+    } catch (err) {
+        result.meta.error = {
+            code: err.code || err.errCode || 5000,
+            message: err.message || err.errMessage || "Unknown Error"
+        };
+        result.meta.status = err.status || err.statusCode || 500;
+    }
+    res.status(result.meta.status).json(result);
+}
+
+export const getMenuNavigationCintroller = async (req, res) => {
+    const result = getResponseTemplate();
+    try {
+        const { page = 1, rowsPerPage = 10 } = req.query;
+        const query =
+            "SELECT * FROM furniture " +
+            "WHERE category_id IN (SELECT id FROM categories WHERE parent_id = ? ) " +
+            "LIMIT ?,?;";
+
+        const data = await exec(query, [req.params.id, (page - 1) * rowsPerPage, +rowsPerPage]);
+        result.data = { item: data };
+
+    } catch (err) {
+        result.meta.error = {
+            code: err.code || err.errCode || 5000,
+            message: err.message || err.errMessage || "Unknown Error"
+        };
+        result.meta.status = err.status || err.statusCode || 500;
+    }
+    res.status(result.meta.status).json(result);
+}
