@@ -101,8 +101,8 @@ export const getCategoriesController = async (req, res) => {
                         data[i].subcategories.push(data[j])
                     }
                 }
+                arr.push(data[i])
             }
-            arr.push(data[i])
         }
 
         result.data = { categories: arr }
@@ -125,8 +125,13 @@ export const getFilteredFurnituresController = async (req, res) => {
             "SELECT id, image FROM furniture " +
             "WHERE category_id IN (SELECT id FROM categories WHERE parent_id = ? UNION SELECT ? id) " +
             "LIMIT ?,?";
+        const pageCountQuery =
+            "SELECT CEIL(COUNT(id) / ?) AS pageCount FROM furniture " +
+            "WHERE category_id IN (SELECT id FROM categories WHERE parent_id = ? UNION SELECT ? id) "
+
         const data = await exec(query, [req.params.id, req.params.id, (page - 1) * rowsPerPage, +rowsPerPage]);
-        result.data = { item: data };
+        const [{ pageCount }] = await exec(pageCountQuery, [rowsPerPage, req.params.id, req.params.id, (page - 1) * rowsPerPage, +rowsPerPage]);
+        result.data = { item: data, pageCount: +pageCount };
 
     } catch (err) {
         result.meta.error = {
